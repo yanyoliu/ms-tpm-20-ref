@@ -11,6 +11,7 @@ jobs:
     runs-on: windows-latest
     env:
       MSYSTEM: MINGW64
+      PATH: C:\msys64\usr\bin;C:\msys64\mingw64\bin:${{ env.PATH }}
 
     steps:
       - name: Checkout repository
@@ -36,12 +37,32 @@ jobs:
         run: ls -R "$GITHUB_WORKSPACE"
 
       - name: Build ms-tpm-20-ref
-        shell: "msys2 { msystem: MINGW64 }"
+        shell: bash
         run: |
           set -euo pipefail
-          cd "$GITHUB_WORKSPACE/TPMCmd"
+
+          # 找到 TPMCmd 目錄
+          TPMCMD_DIR=$(find "$GITHUB_WORKSPACE" -type d -iname "TPMCmd" | head -n 1)
+          if [ -z "$TPMCMD_DIR" ]; then
+            echo "ERROR: TPMCmd directory not found in $GITHUB_WORKSPACE"
+            ls -la "$GITHUB_WORKSPACE"
+            exit 1
+          else
+            echo "Found TPMCmd at: $TPMCMD_DIR"
+          fi
+
+          # 確認 autoreconf 可用
+          which autoreconf
+          autoreconf --version
+
+          # 切換目錄並清理舊設定
+          cd "$TPMCMD_DIR"
           rm -rf autom4te.cache aclocal.m4 configure config.status config.log || true
+
+          # 重新生成 configure
           autoreconf -fi
+
+          # configure + make
           ./configure --host=x86_64-w64-mingw32 --prefix=/mingw64
           make -j$(nproc)
 
