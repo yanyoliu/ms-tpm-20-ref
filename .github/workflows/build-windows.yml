@@ -1,54 +1,61 @@
-name: Build ms-tpm-20-ref (Windows x86_64 - MSYS2)
+name: Build on Windows (MSYS2/x86_64)
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  build-windows-msys2:
+  build-msys2:
     runs-on: windows-latest
-    name: Build on Windows (MSYS2 / x86_64)
+    env:
+      MSYSTEM: MINGW64
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      # Let the action perform the initial MSYS2 update (safe)
-      - name: Setup MSYS2 (install base and update core)
-        uses: msys2/setup-msys2@v2
+      - name: Install MSYS2
+        uses: msys2/setup-msys2@v3
         with:
-          msystem: MINGW64
-          update: true    # <--- 讓 action 處理 core update safely
+          update: true
+          install: >
+            base-devel
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-autoconf
+            mingw-w64-x86_64-automake
+            mingw-w64-x86_64-libtool
+            mingw-w64-x86_64-pkg-config
+            mingw-w64-x86_64-openssl
+            mingw-w64-x86_64-gawk
 
-      - name: Install required packages (inside MSYS2 MINGW64)
+      - name: Build ms-tpm-20-ref
         shell: bash
         run: |
           set -euo pipefail
           MSYS_BASH="C:/msys64/usr/bin/bash.exe"
-          if [ ! -x "$MSYS_BASH" ]; then
-            echo "MSYS2 bash not found at $MSYS_BASH"
+
+          # 確保切到 repo 根目錄
+          cd "$GITHUB_WORKSPACE"
+
+          # 驗證 TPMCmd 存在
+          if [ ! -d "TPMCmd" ]; then
+            echo "ERROR: TPMCmd directory not found in $GITHUB_WORKSPACE"
+            ls -la
             exit 1
           fi
 
-          # Only install the packages we need (no -Syuu that upgrades runtime)
-          "$MSYS_BASH" -lc 'export MSYSTEM=MINGW64; set -euo pipefail; pacman -S --noconfirm --needed autoconf automake libtool autoconf-archive m4 make pkg-config gawk mingw-w64-x86_64-toolchain mingw-w64-x86_64-openssl; echo "=== VERSIONS ==="; uname -a; gcc --version || true; autoconf --version || true; automake --version || true; pacman -Qi autoconf || true'
+          # 執行 build
+          "$MSYS_BASH" -lc 'export MSYSTEM=MINGW64; set -euo pipefail; \
+            cd TPMCmd; \
+            rm -rf autom4te.cache aclocal.m4 configure config.status config.log || true; \
+            autoreconf -fi; \
+            ./configure --host=x86_64-w64-mingw32 --prefix=/mingw64; \
+            make -j$(nproc)'
 
-      - name: Build (autoreconf + configure + make) in MINGW64
-        shell: bash
-        run: |
-          set -euo pipefail
-          MSYS_BASH="C:/msys64/usr/bin/bash.exe"
-          "$MSYS_BASH" -lc 'export MSYSTEM=MINGW64; set -euo pipefail; cd TPMCmd; rm -rf autom4te.cache aclocal.m4 configure config.status config.log || true; autoreconf -fi; ./configure --host=x86_64-w64-mingw32 --prefix=/mingw64; make -j$(nproc)'
-
-      - name: Collect binaries
-        shell: bash
-        run: |
-          set -euo pipefail
-          MSYS_BASH="C:/msys64/usr/bin/bash.exe"
-          "$MSYS_BASH" -lc 'export MSYSTEM=MINGW64; set -euo pipefail; mkdir -p out; find . -type f -iname "*.exe" -print0 | xargs -0 -I{} cp -v {} out/ || true; ls -l out || true'
-
-      - name: Upload built artifacts
-        uses: actions/upload-artifact@v4
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
         with:
-          name: ms-tpm-20-ref-windows-x86_64
-          path: out
+          name: tpmc-executables
+          path: TPMCmd/*.exe
