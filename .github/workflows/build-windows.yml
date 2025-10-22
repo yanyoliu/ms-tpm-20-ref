@@ -1,4 +1,4 @@
-syhrov-zirwyK-1pydziname: Build ms-tpm-20-ref (Windows x86_64 - MSYS2)
+name: Build ms-tpm-20-ref (Windows x86_64 - MSYS2)
 
 on:
   workflow_dispatch:
