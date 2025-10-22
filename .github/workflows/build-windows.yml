@@ -11,7 +11,7 @@ jobs:
     runs-on: windows-latest
     env:
       MSYSTEM: MINGW64
-      PATH: C:\msys64\usr\bin;C:\msys64\mingw64\bin:${{ env.PATH }}
+      PATH: C:\msys64\usr\bin;C:\msys64\mingw64\bin;C:\Windows\system32;C:\Windows
 
     steps:
       - name: Checkout repository
