@@ -52,7 +52,7 @@ jobs:
 
       - name: Build (autoreconf + configure + make) in MINGW64
         # also run inside MSYS2 MINGW64 shell
-        shell: msys2 { msystem: MINGW64 }
+        shell: "msys2 { msystem: MINGW64 }"
         run: |
           set -euo pipefail
           cd TPMCmd
@@ -62,7 +62,7 @@ jobs:
           make -j$(nproc)
 
       - name: Collect binaries
-        shell: msys2 { msystem: MINGW64 }
+        shell: "msys2 { msystem: MINGW64 }"
         run: |
           mkdir -p out
           find . -type f -iname "*.exe" -print0 | xargs -0 -I{} cp -v {} out/ || true
