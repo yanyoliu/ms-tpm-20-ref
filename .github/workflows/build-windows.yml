@@ -13,22 +13,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Install MSYS2 (base). This prepares MSYS2 on the runner.
       - name: Setup MSYS2 (install base)
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           update: false
 
+      # Run pacman and other MSYS2 commands inside MSYS2 shell.
+      # Use the 'msys2' shell so pacman is available.
       - name: Update MSYS2 and install packages (ensure autoconf etc)
-        shell: bash
+        # run inside MSYS2 MINGW64 shell
+        shell: msys2 { msystem: MINGW64 }
         run: |
           set -euo pipefail
-          # Update package DB and core system (may need re-run on major updates)
+          # update package DB and core system
           pacman -Syuu --noconfirm || true
-          # second pass to finish upgrade if needed
           pacman -Su --noconfirm || true
 
-          # Install required packages (MSYS and MINGW variants)
           pacman -S --noconfirm --needed \
             autoconf \
             automake \
@@ -41,7 +43,6 @@ jobs:
             mingw-w64-x86_64-toolchain \
             mingw-w64-x86_64-openssl
 
-          # Show versions for debug
           echo "=== VERSIONS ==="
           uname -a
           gcc --version || true
@@ -50,24 +51,20 @@ jobs:
           pacman -Qi autoconf || true
 
       - name: Build (autoreconf + configure + make) in MINGW64
-        shell: bash
-        env:
-          MSYSTEM: MINGW64
+        # also run inside MSYS2 MINGW64 shell
+        shell: msys2 { msystem: MINGW64 }
         run: |
           set -euo pipefail
           cd TPMCmd
           rm -rf autom4te.cache aclocal.m4 configure config.status config.log
-          # regenerate configure and Makefiles
           autoreconf -fi
-          # force run with MINGW host; adjust prefix if you want
           ./configure --host=x86_64-w64-mingw32 --prefix=/mingw64
           make -j$(nproc)
 
       - name: Collect binaries
-        shell: bash
+        shell: msys2 { msystem: MINGW64 }
         run: |
           mkdir -p out
-          # try to copy any generated exe (adjust patterns if needed)
           find . -type f -iname "*.exe" -print0 | xargs -0 -I{} cp -v {} out/ || true
           ls -l out || true
 
