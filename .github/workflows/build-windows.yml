@@ -11,11 +11,12 @@ jobs:
     runs-on: windows-latest
     env:
       MSYSTEM: MINGW64
-      PATH: C:\msys64\usr\bin;C:\msys64\mingw64\bin;C:\Windows\system32;C:\Windows
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          submodules: recursive
 
       - name: Install MSYS2
         uses: msys2/setup-msys2@v2
@@ -38,9 +39,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          MSYS_BASH="C:/msys64/usr/bin/bash.exe"
 
-          # 找到 TPMCmd 目錄
+          # 嘗試找到 TPMCmd 目錄
           TPMCMD_DIR=$(find "$GITHUB_WORKSPACE" -type d -iname "TPMCmd" | head -n 1)
+
           if [ -z "$TPMCMD_DIR" ]; then
             echo "ERROR: TPMCmd directory not found in $GITHUB_WORKSPACE"
             ls -la "$GITHUB_WORKSPACE"
@@ -49,20 +52,13 @@ jobs:
             echo "Found TPMCmd at: $TPMCMD_DIR"
           fi
 
-          # 確認 autoreconf 可用
-          which autoreconf
-          autoreconf --version
-
-          # 切換目錄並清理舊設定
-          cd "$TPMCMD_DIR"
-          rm -rf autom4te.cache aclocal.m4 configure config.status config.log || true
-
-          # 重新生成 configure
-          autoreconf -fi
-
-          # configure + make
-          ./configure --host=x86_64-w64-mingw32 --prefix=/mingw64
-          make -j$(nproc)
+          # 執行 build
+          "$MSYS_BASH" -lc "export MSYSTEM=MINGW64; set -euo pipefail; \
+            cd \"$TPMCMD_DIR\"; \
+            rm -rf autom4te.cache aclocal.m4 configure config.status config.log || true; \
+            /c/msys64/mingw64/bin/autoreconf -fi; \
+            ./configure --host=x86_64-w64-mingw32 --prefix=/mingw64; \
+            make -j\$(nproc)"
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
