@@ -36,7 +36,7 @@ jobs:
         run: ls -R "$GITHUB_WORKSPACE"
 
       - name: Build ms-tpm-20-ref
-        shell: msys2 { msystem: MINGW64 }
+        shell: "msys2 { msystem: MINGW64 }"
         run: |
           set -euo pipefail
           cd "$GITHUB_WORKSPACE/TPMCmd"
