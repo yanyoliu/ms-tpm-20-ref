@@ -13,25 +13,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup MSYS2 (install base)
+      # Let the action perform the initial MSYS2 update (safe)
+      - name: Setup MSYS2 (install base and update core)
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          update: false
+          update: true    # <--- 讓 action 處理 core update safely
 
-      - name: Update MSYS2 and install packages (ensure autoconf etc)
+      - name: Install required packages (inside MSYS2 MINGW64)
         shell: bash
         run: |
           set -euo pipefail
-          # Use MSYS2's bash. msys2 gets installed to C:\msys64 on windows-latest.
           MSYS_BASH="C:/msys64/usr/bin/bash.exe"
           if [ ! -x "$MSYS_BASH" ]; then
             echo "MSYS2 bash not found at $MSYS_BASH"
             exit 1
           fi
 
-          # Run pacman commands inside MSYS2 MINGW64 environment
-          "$MSYS_BASH" -lc 'export MSYSTEM=MINGW64; set -euo pipefail; pacman -Syuu --noconfirm || true; pacman -Su --noconfirm || true; pacman -S --noconfirm --needed autoconf automake libtool autoconf-archive m4 make pkg-config gawk mingw-w64-x86_64-toolchain mingw-w64-x86_64-openssl; echo "=== VERSIONS ==="; uname -a; gcc --version || true; autoconf --version || true; automake --version || true; pacman -Qi autoconf || true'
+          # Only install the packages we need (no -Syuu that upgrades runtime)
+          "$MSYS_BASH" -lc 'export MSYSTEM=MINGW64; set -euo pipefail; pacman -S --noconfirm --needed autoconf automake libtool autoconf-archive m4 make pkg-config gawk mingw-w64-x86_64-toolchain mingw-w64-x86_64-openssl; echo "=== VERSIONS ==="; uname -a; gcc --version || true; autoconf --version || true; automake --version || true; pacman -Qi autoconf || true'
 
       - name: Build (autoreconf + configure + make) in MINGW64
         shell: bash
