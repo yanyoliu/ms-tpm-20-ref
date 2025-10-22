@@ -56,7 +56,7 @@ jobs:
           "$MSYS_BASH" -lc "export MSYSTEM=MINGW64; set -euo pipefail; \
             cd \"$TPMCMD_DIR\"; \
             rm -rf autom4te.cache aclocal.m4 configure config.status config.log || true; \
-            whereis autoreconf \
+            which autoreconf \
             /c/msys64/mingw64/bin/autoreconf -fi; \
             ./configure --host=x86_64-w64-mingw32 --prefix=/mingw64; \
             make -j\$(nproc)"
