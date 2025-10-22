@@ -2,21 +2,20 @@ name: Build on Windows (MSYS2/x86_64)
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
 
 jobs:
-  build-msys2:
+  build:
     runs-on: windows-latest
-    env:
-      MSYSTEM: MINGW64
 
     steps:
+      # 1. Checkout repository
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v3
 
-      - name: Install MSYS2
+      # 2. Setup MSYS2
+      - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
           update: true
@@ -30,32 +29,12 @@ jobs:
             openssl
             gawk
 
-      - name: Build ms-tpm-20-ref
-        shell: bash
+      # 3. Build TPMCmd
+      - name: Build TPMCmd
+        shell: msys2 { msystem: MINGW64 }
         run: |
-          set -euo pipefail
-          MSYS_BASH="C:/msys64/usr/bin/bash.exe"
-
-          # 確保切到 repo 根目錄
-          cd "$GITHUB_WORKSPACE"
-
-          # 驗證 TPMCmd 存在
-          if [ ! -d "TPMCmd" ]; then
-            echo "ERROR: TPMCmd directory not found in $GITHUB_WORKSPACE"
-            ls -la
-            exit 1
-          fi
-
-          # 執行 build
-          "$MSYS_BASH" -lc 'export MSYSTEM=MINGW64; set -euo pipefail; \
-            cd TPMCmd; \
-            rm -rf autom4te.cache aclocal.m4 configure config.status config.log || true; \
-            autoreconf -fi; \
-            ./configure --host=x86_64-w64-mingw32 --prefix=/mingw64; \
-            make -j$(nproc)'
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: tpmc-executables
-          path: TPMCmd/*.exe
+          cd TPMCmd
+          rm -rf autom4te.cache aclocal.m4 configure config.status config.log || true
+          autoreconf -fi
+          ./configure --host=x86_64-w64-mingw32 --prefix=/mingw64
+          make -j$(nproc)
