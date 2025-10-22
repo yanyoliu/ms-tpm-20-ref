@@ -43,7 +43,7 @@ jobs:
             mingw-w64-x86_64-toolchain \
             mingw-w64-x86_64-openssl
 
-          echo "=== VERSIONS ==="
+          echo "==== VERSIONS ===="
           uname -a
           gcc --version || true
           autoconf --version || true
