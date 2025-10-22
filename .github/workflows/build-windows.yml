@@ -1,5 +1,4 @@
-# .github/workflows/build-windows.yml
-name: Build ms-tpm-20-ref (Windows x86_64 - MSYS2)
+syhrov-zirwyK-1pydziname: Build ms-tpm-20-ref (Windows x86_64 - MSYS2)
 
 on:
   workflow_dispatch:
@@ -8,53 +7,68 @@ on:
 
 jobs:
   build-windows-msys2:
-    name: Build on Windows (MSYS2 / x86_64)
     runs-on: windows-latest
+    name: Build on Windows (MSYS2 / x86_64)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup MSYS2
+      - name: Setup MSYS2 (install base)
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          update: true
-          install: >
-            autoconf
-            automake
-            libtool
-            pkg-config
-            make
-            gcc
-            mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-openssl
-            autoconf-archive
-      - name: Show tool versions
-        shell: bash
-        run: |
-          uname -a
-          gcc --version
-          autoconf --version
-          automake --version
-          pkg-config --version
+          update: false
 
-      - name: Build (autoreconf + configure + make)
+      - name: Update MSYS2 and install packages (ensure autoconf etc)
         shell: bash
         run: |
+          set -euo pipefail
+          # Update package DB and core system (may need re-run on major updates)
+          pacman -Syuu --noconfirm || true
+          # second pass to finish upgrade if needed
+          pacman -Su --noconfirm || true
+
+          # Install required packages (MSYS and MINGW variants)
+          pacman -S --noconfirm --needed \
+            autoconf \
+            automake \
+            libtool \
+            autoconf-archive \
+            m4 \
+            make \
+            pkg-config \
+            gawk \
+            mingw-w64-x86_64-toolchain \
+            mingw-w64-x86_64-openssl
+
+          # Show versions for debug
+          echo "=== VERSIONS ==="
+          uname -a
+          gcc --version || true
+          autoconf --version || true
+          automake --version || true
+          pacman -Qi autoconf || true
+
+      - name: Build (autoreconf + configure + make) in MINGW64
+        shell: bash
+        env:
+          MSYSTEM: MINGW64
+        run: |
+          set -euo pipefail
           cd TPMCmd
-          rm -rf autom4te.cache aclocal.m4 configure config.status
+          rm -rf autom4te.cache aclocal.m4 configure config.status config.log
+          # regenerate configure and Makefiles
           autoreconf -fi
+          # force run with MINGW host; adjust prefix if you want
           ./configure --host=x86_64-w64-mingw32 --prefix=/mingw64
           make -j$(nproc)
 
       - name: Collect binaries
         shell: bash
         run: |
-          # 輸出可能在 TPMCmd 的子目錄(視 Makefile)
-          # 調整路徑以收集主要執行檔（示例）
           mkdir -p out
-          # 嘗試找到任何 exe 生成
-          find . -name "*.exe" -type f -print | xargs -I{} cp {} out/ || true
+          # try to copy any generated exe (adjust patterns if needed)
+          find . -type f -iname "*.exe" -print0 | xargs -0 -I{} cp -v {} out/ || true
           ls -l out || true
 
       - name: Upload built artifacts
