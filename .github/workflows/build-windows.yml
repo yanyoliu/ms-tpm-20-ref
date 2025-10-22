@@ -23,12 +23,12 @@ jobs:
           install: >
             base-devel
             mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-autoconf
-            mingw-w64-x86_64-automake
-            mingw-w64-x86_64-libtool
-            mingw-w64-x86_64-pkg-config
-            mingw-w64-x86_64-openssl
-            mingw-w64-x86_64-gawk
+            autoconf
+            automake
+            libtool
+            pkg-config
+            openssl
+            gawk
 
       - name: Build ms-tpm-20-ref
         shell: bash
